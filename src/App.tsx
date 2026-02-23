@@ -9,7 +9,21 @@ const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 interface Review {
   user: string;
   rating: number;
+  date?: string;
+  variation?: string;
   comment: string;
+  sellerResponse?: string;
+  images?: string[];
+}
+
+interface ProductDetail {
+  label: string;
+  value: string;
+}
+
+interface ProductVariation {
+  name: string;
+  options: string[];
 }
 
 interface ProductData {
@@ -19,6 +33,8 @@ interface ProductData {
   images: string[];
   rating: number;
   sold: string;
+  variations: ProductVariation[];
+  details: ProductDetail[];
   reviews: Review[];
 }
 
@@ -54,6 +70,11 @@ export default function App() {
         3. Encontre as informações reais do produto (preço, descrição, etc).
         4. O MAIS IMPORTANTE: Encontre URLs de IMAGENS REAIS deste produto. NÃO use imagens genéricas ou de placeholder (como picsum.photos). Você deve retornar links de imagens reais do produto que você encontrou na busca.
         
+        Além das informações básicas, tente extrair:
+        - Variações do produto (ex: Cor, Tamanho) e suas opções.
+        - Detalhes do produto (ex: Categoria, Marca, Material, Envio de).
+        - Avaliações detalhadas, incluindo data, variação comprada, resposta do vendedor e URLs de imagens da avaliação (se houver).
+        
         Retorne os dados no formato JSON solicitado.`,
         config: {
           tools: [{ urlContext: {} }, { googleSearch: {} }],
@@ -64,9 +85,33 @@ export default function App() {
               name: { type: Type.STRING, description: "Nome completo do produto" },
               price: { type: Type.STRING, description: "Preço do produto (ex: R$ 50,00)" },
               description: { type: Type.STRING, description: "Descrição detalhada do produto" },
-              images: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array de URLs de imagens" },
+              images: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Array de URLs de imagens do produto" },
               rating: { type: Type.NUMBER, description: "Avaliação média de 0 a 5" },
-              sold: { type: Type.STRING, description: "Quantidade vendida (ex: 1.5k)" },
+              sold: { type: Type.STRING, description: "Quantidade vendida ou número de avaliações (ex: 1.5k vendidos, 6 Avaliações)" },
+              variations: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: { type: Type.STRING, description: "Nome da variação (ex: COR, TAMANHO)" },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Opções disponíveis (ex: BRANCO, PRETO, P, M)" }
+                  },
+                  required: ["name", "options"]
+                },
+                description: "Variações disponíveis para o produto"
+              },
+              details: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    label: { type: Type.STRING, description: "Rótulo do detalhe (ex: Marca, Categoria, Envio de)" },
+                    value: { type: Type.STRING, description: "Valor do detalhe (ex: 3D, Paraná)" }
+                  },
+                  required: ["label", "value"]
+                },
+                description: "Especificações e detalhes técnicos do produto"
+              },
               reviews: {
                 type: Type.ARRAY,
                 items: {
@@ -74,14 +119,18 @@ export default function App() {
                   properties: {
                     user: { type: Type.STRING },
                     rating: { type: Type.NUMBER },
-                    comment: { type: Type.STRING }
+                    date: { type: Type.STRING, description: "Data da avaliação (ex: 2025-08-29 07:20)" },
+                    variation: { type: Type.STRING, description: "Variação comprada pelo usuário (ex: PRETO, M)" },
+                    comment: { type: Type.STRING },
+                    sellerResponse: { type: Type.STRING, description: "Resposta do vendedor ao comentário" },
+                    images: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Imagens anexadas na avaliação" }
                   },
                   required: ["user", "rating", "comment"]
                 },
                 description: "Lista dos principais comentários de clientes"
               }
             },
-            required: ["name", "price", "description", "images", "rating", "sold", "reviews"]
+            required: ["name", "price", "description", "images", "rating", "sold", "variations", "details", "reviews"]
           }
         }
       });
@@ -237,6 +286,46 @@ export default function App() {
                     {product.price}
                   </div>
 
+                  {/* Variations */}
+                  {product.variations && product.variations.length > 0 && (
+                    <div className="space-y-4 mb-8">
+                      {product.variations.map((variation, idx) => (
+                        <div key={idx}>
+                          <h4 className="text-sm font-medium text-gray-700 mb-2 uppercase tracking-wider">{variation.name}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {variation.options.map((option, optIdx) => (
+                              <span key={optIdx} className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-800 shadow-sm">
+                                {option}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Details */}
+                  {product.details && product.details.length > 0 && (
+                    <div className="space-y-4 mb-8">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <ImageIcon className="w-5 h-5 text-gray-400" /> {/* Reusing icon or could use a different one */}
+                        Detalhes do Produto
+                      </h3>
+                      <div className="bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                          <tbody>
+                            {product.details.map((detail, idx) => (
+                              <tr key={idx} className="border-b border-gray-100 last:border-0">
+                                <th className="px-4 py-3 font-medium text-gray-500 bg-gray-100/50 w-1/3">{detail.label}</th>
+                                <td className="px-4 py-3 text-gray-900">{detail.value}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                       <ImageIcon className="w-5 h-5 text-gray-400" />
@@ -262,16 +351,42 @@ export default function App() {
                             <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold text-xs">
                               {review.user.charAt(0).toUpperCase()}
                             </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{review.user}</div>
-                              <div className="flex text-orange-400">
-                                {[...Array(5)].map((_, i) => (
-                                  <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-gray-300'}`} />
-                                ))}
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium text-gray-900">{review.user}</div>
+                                {review.date && <div className="text-xs text-gray-500">{review.date}</div>}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="flex text-orange-400">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-gray-300'}`} />
+                                  ))}
+                                </div>
+                                {review.variation && (
+                                  <span className="text-xs text-gray-500 border-l border-gray-300 pl-2">
+                                    Variação: {review.variation}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
-                          <p className="text-gray-600 text-sm pl-10">{review.comment}</p>
+                          
+                          <p className="text-gray-700 text-sm pl-10 mb-3">{review.comment}</p>
+                          
+                          {review.images && review.images.length > 0 && (
+                            <div className="pl-10 flex gap-2 overflow-x-auto pb-2 mb-3">
+                              {review.images.map((img, imgIdx) => (
+                                <img key={imgIdx} src={img} alt="Review" className="w-16 h-16 object-cover rounded-lg border border-gray-200 flex-shrink-0" referrerPolicy="no-referrer" />
+                              ))}
+                            </div>
+                          )}
+
+                          {review.sellerResponse && (
+                            <div className="ml-10 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                              <div className="text-xs font-semibold text-gray-900 mb-1">Resposta do Vendedor:</div>
+                              <p className="text-xs text-gray-600">{review.sellerResponse}</p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
