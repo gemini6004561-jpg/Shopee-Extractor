@@ -3,7 +3,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { Search, ShoppingBag, Star, Image as ImageIcon, MessageSquare, Loader2, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 interface Review {
   user: string;
@@ -32,6 +33,11 @@ export default function App() {
   const handleExtract = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
+
+    if (!ai) {
+      setError('A chave da API do Gemini não foi configurada. Por favor, adicione a variável de ambiente GEMINI_API_KEY no Vercel.');
+      return;
+    }
 
     setLoading(true);
     setError('');
