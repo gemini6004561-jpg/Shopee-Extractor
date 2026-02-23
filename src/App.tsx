@@ -61,7 +61,7 @@ export default function App() {
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-3-flash-preview',
         contents: `Você é um assistente de extração de dados de e-commerce. O usuário quer extrair dados deste produto da Shopee: ${url}
         
         A Shopee costuma bloquear acessos diretos de bots. Se você não conseguir ler a página diretamente pelo link, faça o seguinte:
@@ -144,7 +144,13 @@ export default function App() {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Ocorreu um erro ao extrair os dados. Verifique a URL e tente novamente.');
+      let errorMessage = err.message || 'Ocorreu um erro ao extrair os dados. Verifique a URL e tente novamente.';
+      
+      if (errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        errorMessage = 'Limite de uso gratuito da API atingido (Erro 429). A cota da sua chave do Gemini acabou por enquanto. Tente novamente em alguns minutos ou verifique seu plano no Google AI Studio.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
