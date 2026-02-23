@@ -45,12 +45,18 @@ export default function App() {
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Extraia as informações detalhadas do produto a partir desta URL da Shopee: ${url}. 
-        Se você conseguir acessar a página, extraia o nome exato, preço, descrição, imagens, avaliação, quantidade vendida e comentários. 
-        Se você não conseguir acessar a página devido a restrições, deduza os detalhes do produto a partir do slug da URL e gere uma extração simulada altamente realista para fins de demonstração. Para as imagens, se não conseguir as reais, use imagens de placeholder de alta qualidade do https://picsum.photos/seed/{random}/800/800.`,
+        model: 'gemini-3.1-pro-preview',
+        contents: `Você é um assistente de extração de dados de e-commerce. O usuário quer extrair dados deste produto da Shopee: ${url}
+        
+        A Shopee costuma bloquear acessos diretos de bots. Se você não conseguir ler a página diretamente pelo link, faça o seguinte:
+        1. Extraia o nome do produto a partir do texto do próprio link (slug).
+        2. USE A FERRAMENTA DE BUSCA (Google Search) para pesquisar por esse produto específico na internet.
+        3. Encontre as informações reais do produto (preço, descrição, etc).
+        4. O MAIS IMPORTANTE: Encontre URLs de IMAGENS REAIS deste produto. NÃO use imagens genéricas ou de placeholder (como picsum.photos). Você deve retornar links de imagens reais do produto que você encontrou na busca.
+        
+        Retorne os dados no formato JSON solicitado.`,
         config: {
-          tools: [{ urlContext: {} }],
+          tools: [{ urlContext: {} }, { googleSearch: {} }],
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
